@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../')
+
 import matplotlib.pyplot as plt
 import numpy as np
 from Soliton_Gen import soliton, norm

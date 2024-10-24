@@ -14,15 +14,15 @@ def soliton(c,
             as_func=False):
 
     r"""Obtain a soliton for the QGP equation.
-    
+
     Returns the numerical soliton with a giving c and k. It may return a
     callable or the soliton in certain space points, depending on 'x' argument.
-    
+
     In order for the soliton to exist, the pair should leave in the
     corresponding set (D_1, D_2 or D_3) and also be consistent with the
     existence of certain types of solitons in each set. For example, dark
     solitons leaves only in D_1 and D_2 but not in D_3.
-    
+
     This function calculates an inverse of a function depending on whether the
     type of soliton is required. By default, the domain of the function is
     obtained depending on c and k, and is compared with the type of the soliton.
@@ -32,12 +32,12 @@ def soliton(c,
     c : float
         Value representing the speed of the soliton. It should be positive and
         consistent with the type of the required soliton.
-        
+
     k : float
         Real value representing a parameter of the QGP equation. It should be
         consistent with the type of the required soliton and also with the
         soliton velocity.
-        
+
     soliton_type: {'dark', 'anti', 'cuspon'}, default: 'dark'
         Type of the soliton.
         - 'dark': Generates a Dark soliton. Lives in D_1 and D_2.
@@ -47,14 +47,14 @@ def soliton(c,
     L: float, default: 10
         Value representig the width of the spatial domain. It should be
         positive as the domain is symmetric respect to 0.
-    
+
     N: int, default: 5e4
         Value representing the total of discretization point.
         
     x : array_like, default: np.linspace(-L, L, N)
         Array representing the space domain to generates the soliton. The array
         should be symmetric respecto to 0.
-    
+
     as_func: bool, default: False
         Whether the return is an array or a callable.
 
@@ -64,31 +64,30 @@ def soliton(c,
         Soliton profile with parameters c and k. It can take only arrays.
 
     """
-    
+
     print("Creating soliton...")
-    
+
     i = 1j
 
     D_1 = [[0, np.sqrt(2)], [0, 1/2]]
-    D_2 = [[0, np.sqrt(2)], [0, np.inf]]
+    D_2 = [[0, np.sqrt(2)], [-np.inf, 0]]
     D_3 = [[np.sqrt(2), np.inf], [1/2, np.inf]]
 
-    
+
     if soliton_type!="dark" and soliton_type!="anti" and soliton_type!="cuspon":
         raise ValueError("No soliton exists for %s" %soliton_type)
-        
+
     is_in_D1 = is_in_D(c, k, D_1, open_domain=[[False, True], [True, True]])
     is_in_D2 = is_in_D(c, k, D_2, open_domain=[[False, True], [True, False]])
     is_in_D3 = is_in_D(c, k, D_3, open_domain=[[True, True], [True, True]])
-    
-    
+
     dark_cond = is_in_D1 or is_in_D2
     anti_cond = is_in_D3
     cond = (soliton_type == "dark" and not dark_cond) or (soliton_type == "anti" and not anti_cond)
     
     if cond:
         raise ValueError("Pair (%s, %g) is not in the soliton domain" %(round(c, 3), round(k, 3)))
-    
+
     # Domain
     ymin = 0
     ymax = 1-c*c/2
@@ -96,7 +95,7 @@ def soliton(c,
     if soliton_type=="anti":
         ymin = 1-c*c/2
         ymax = 0
-        
+
     ref1, ref2 = _get_valid_refpoints(ymin, ymax)
     
     if x is None:
@@ -104,26 +103,43 @@ def soliton(c,
 
     m = N//2
     xpos = x[m:]
-    
+
+
     def Func_c_k(y):
 
         y = np.asarray(y)
 
         valid_mask = (y > ymin) & (y <= ymax)
-        
+
         if soliton_type=="anti":
             valid_mask = (y >= ymin) & (y < ymax)
-        
-        # Assign infinite to values outside the domain
-        val = np.full_like(y, -np.inf, dtype=np.float64)
-        val[y > ymax] = np.inf
 
-        def func_c_k(y):
+        def f_c_k(y):
             root = np.sqrt((2-c*c-2*y)/(1-2*k+2*k*y))
             sum_1 = 2 * np.sqrt(k) * np.arctan(np.sqrt(k) * root)
             sum_2 = 2 * np.sqrt((1-2*k)/(2-c*c)) * np.arctanh(np.sqrt((1-2*k)/(2-c*c)) * root)
             output = sum_1 + sum_2
             return output
+
+        def g_c_k(y):
+            root = np.sqrt((2-c*c-2*y)/(1-2*k+2*k*y))
+            sum_1 = -2 * np.sqrt(-k) * np.arctanh(np.sqrt(-k) * root)
+            sum_2 = 2 * np.sqrt((1-2*k)/(2-c*c)) * np.arctanh(np.sqrt((1-2*k)/(2-c*c)) * root)
+            output = sum_1 + sum_2
+            return output
+
+        if (soliton_type == "dark" and is_in_D1) or (soliton_type == "anti" and is_in_D3):
+            func_c_k = f_c_k
+
+        elif soliton_type == "dark" and is_in_D2:
+            func_c_k = g_c_k
+
+        # Increasing or decreasing trend
+        trend = np.sign(func_c_k(ref2) - func_c_k(ref1))
+
+        # Assign infinite to values outside the domain
+        val = np.full_like(y, -np.inf*trend, dtype=np.float64)
+        val[y > ymax] = np.inf * trend
 
         val[valid_mask] = func_c_k(y[valid_mask])
 
@@ -199,8 +215,8 @@ def soliton(c,
         theta[:m] = np.flip(theta[m:])
 
         return theta
-    
-    
+
+
     def u_c_k():
 
         eta = eta_c_k()
@@ -215,32 +231,31 @@ def soliton(c,
 
 
     soliton_arr = u_c_k()
-    
+
     print("Soliton created")
-    
+
     if as_func:
         soliton_func = make_interp_spline(x, soliton_arr)
         return soliton_func
-    
+
     return soliton_arr
 
 
 def is_in_D(c, k, D, open_domain):
     c_open, k_open = open_domain
     c_domain, k_domain = D
-    
+
     c_cond = is_in_interval(c, c_domain, c_open)
     k_cond = is_in_interval(k, k_domain, k_open)
-    
+
     return c_cond and k_cond
-    
-    
+
+
 def is_in_interval(x, D, open_domain):
 
     xmin, xmax = D
     xmin_open, xmax_open = open_domain
-    
-    
+
     if xmax_open:
         max_cond = x < xmax
 
@@ -252,7 +267,7 @@ def is_in_interval(x, D, open_domain):
 
     else:
         min_cond = xmin <= x
-    
+
     return min_cond and max_cond
 
 
