@@ -31,7 +31,8 @@ def soliton(c,
     ----------
     c : float
         Value representing the speed of the soliton. It should be positive and
-        consistent with the type of the required soliton.
+        consistent with the type of the required soliton. When soliton is bright,
+        c is equal to w in the theoretical formula.
 
     k : float
         Real value representing a parameter of the QGP equation. It should be
@@ -69,21 +70,29 @@ def soliton(c,
 
     i = 1j
 
+    D_bright = [[0, np.inf], [0, np.inf]]
     D_1 = [[0, np.sqrt(2)], [0, 1/2]]
     D_2 = [[0, np.sqrt(2)], [-np.inf, 0]]
     D_3 = [[np.sqrt(2), np.inf], [1/2, np.inf]]
 
 
-    if soliton_type!="dark" and soliton_type!="anti" and soliton_type!="cuspon":
+    if soliton_type!="dark" and soliton_type!="anti" and soliton_type!="cuspon" and soliton_type!="bright":
         raise ValueError("No soliton exists for %s" %soliton_type)
 
     is_in_D1 = is_in_D(c, k, D_1, open_domain=[[False, True], [True, True]])
     is_in_D2 = is_in_D(c, k, D_2, open_domain=[[False, True], [True, False]])
     is_in_D3 = is_in_D(c, k, D_3, open_domain=[[True, True], [True, True]])
+    is_in_D_bright = is_in_D(c, k, D_bright, open_domain=[[True, True], [False, True]])
 
     dark_cond = is_in_D1 or is_in_D2
     anti_cond = is_in_D3
-    cond = (soliton_type == "dark" and not dark_cond) or (soliton_type == "anti" and not anti_cond)
+    bright_cond = is_in_D_bright
+    
+    not_dark_cond = soliton_type == "dark" and not dark_cond
+    not_anti_cond = (soliton_type == "anti" and not anti_cond)
+    not_bright_cond = (soliton_type == "bright" and not bright_cond)
+
+    cond = not_dark_cond or not_anti_cond or not_bright_cond
     
     if cond:
         raise ValueError("Pair (%s, %g) is not in the soliton domain" %(round(c, 3), round(k, 3)))
@@ -95,6 +104,11 @@ def soliton(c,
     if soliton_type=="anti":
         ymin = 1-c*c/2
         ymax = 0
+
+    if soliton_type=="bright":
+        ymin = 0
+        ymax = np.sqrt(2*c)
+
 
     ref1, ref2 = _get_valid_refpoints(ymin, ymax)
     
@@ -113,6 +127,9 @@ def soliton(c,
 
         if soliton_type=="anti":
             valid_mask = (y >= ymin) & (y < ymax)
+            
+        if soliton_type=="bright":
+            valid_mask = (y > ymin) & (y < ymax)
 
         def f_c_k(y):
             root = np.sqrt((2-c*c-2*y)/(1-2*k+2*k*y))
@@ -121,6 +138,16 @@ def soliton(c,
             output = sum_1 + sum_2
             return output
 
+
+        def f_w_k(y):
+            root = np.sqrt((2 * c - y*y)/(1+2*k*y*y))
+            sum_1 = 1 / np.sqrt(c) * np.arctanh(1/np.sqrt(2*c) * root)
+            sum_2 = 2 * np.sqrt(k) * np.arctan(np.sqrt(2*k) * root)
+            output = sum_1 + sum_2
+
+            return output
+    
+
         def g_c_k(y):
             root = np.sqrt((2-c*c-2*y)/(1-2*k+2*k*y))
             sum_1 = -2 * np.sqrt(-k) * np.arctanh(np.sqrt(-k) * root)
@@ -128,11 +155,15 @@ def soliton(c,
             output = sum_1 + sum_2
             return output
 
+
         if (soliton_type == "dark" and is_in_D1) or (soliton_type == "anti" and is_in_D3):
             func_c_k = f_c_k
 
         elif soliton_type == "dark" and is_in_D2:
             func_c_k = g_c_k
+        
+        elif soliton_type == "bright" and is_in_D_bright:
+            func_c_k = f_w_k
 
         # Increasing or decreasing trend
         trend = np.sign(func_c_k(ref2) - func_c_k(ref1))
@@ -218,27 +249,47 @@ def soliton(c,
 
 
     def u_c_k():
+        i = 1j
 
         eta = eta_c_k()
 
         if c == 0:
             output = np.sign(x) * np.sqrt(1 - eta)
-            return output
+            return output + 0*i
+            
 
         rho = rho_c_k(eta)
         theta = theta_c_k(eta)
         return rho * np.exp(i*theta)
 
 
+    if soliton_type == "bright" and is_in_D_bright:
+        def u_c_k():
+            i = 1j
+            output = eta_c_k()
+            return output + 0*i
+        
+    if k==0 and soliton_type=="dark" and as_func:
+        
+        def dark_soliton(x):
+            A = np.sqrt((2-c**2)/2)
+            sum_1 = A * np.tanh(np.sqrt(2-c**2)/2 * x)
+            sum_2 = i * c/np.sqrt(2)
+
+            return sum_1 - sum_2
+    
+        print("Soliton created")
+        return dark_soliton, x
+    
     soliton_arr = u_c_k()
 
     print("Soliton created")
 
     if as_func:
         soliton_func = make_interp_spline(x, soliton_arr)
-        return soliton_func
+        return soliton_func, x
 
-    return soliton_arr
+    return soliton_arr, x
 
 
 def is_in_D(c, k, D, open_domain):
