@@ -241,9 +241,9 @@ def soliton(c,
 
         for j in range(m-1):
 
-            theta[j+1+m] = c/2 * (theta[j+m//2] + dx/2 * (integrand[j+m] + integrand[j+m+1]))
+            theta[j+1+m] = theta[j+m] + c/2 * (dx/2 * (integrand[j+m] + integrand[j+m+1]))
 
-        theta[:m] = np.flip(theta[m:])
+        theta[:m] = -np.flip(theta[m:])
 
         return theta
 
@@ -328,7 +328,3 @@ def _get_valid_refpoints(xmin, xmax):
     ref2 = xmax - d / 4.
     return ref1, ref2
 
-
-
-def norm(x):
-    return np.abs(x)**2
