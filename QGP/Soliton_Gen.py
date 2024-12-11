@@ -136,6 +136,7 @@ def soliton(c,
             sum_1 = 2 * np.sqrt(k) * np.arctan(np.sqrt(k) * root)
             sum_2 = 2 * np.sqrt((1-2*k)/(2-c*c)) * np.arctanh(np.sqrt((1-2*k)/(2-c*c)) * root)
             output = sum_1 + sum_2
+
             return output
 
 
@@ -181,8 +182,8 @@ def soliton(c,
 
         min_kwargs = {}
         min_kwargs['bracket'] = (ref1, ref2)
-        min_kwargs['tol'] = 1.48e-08
-        min_kwargs['method'] = 'Brent'
+        min_kwargs['tol'] = 1.48e-12
+        min_kwargs['method'] = 'Golden'
 
         results = np.full_like(x, np.nan, dtype=np.float64)
         resultsmask = np.zeros(x. shape, dtype=bool)
