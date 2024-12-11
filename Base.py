@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import animation
 from time import time
 from abc import ABC, abstractmethod
 from Utilities import *
@@ -76,7 +77,7 @@ class NLS_numerical(NLS_solutions):
         self.w_theo = w_theo
 
         #  Set init condition with theo class
-        self.w[0] = self.w_theo.w(self.x, self.ti)
+        self.w[0] = self.w_theo(self.x, self.ti)
         if eps != 0:
             self.w[0][1: -1] += np.random.uniform(-1, 1, self.N-2)*eps
         if sigma != 0:
@@ -180,13 +181,13 @@ class NLS_numerical(NLS_solutions):
         line2, = ax.plot(self.x, empty_line, label="Theo", alpha=.6)
         # Plotting with theo
         if theo and coord.lower() == "norm":
-            line2.set_ydata(norm(self.w_theo.w(self.x, self.ti)))
+            line2.set_ydata(norm(self.w_theo(self.x, self.ti)))
                 
         elif theo and coord.lower() == "real":
-            line2.set_ydata(np.real(self.w_theo.w(self.x, self.ti)))
+            line2.set_ydata(np.real(self.w_theo(self.x, self.ti)))
             
         elif theo and coord.lower() == "imag":
-            line2.set_ydata(np.imag(self.w_theo.w(self.x, self.ti)))
+            line2.set_ydata(np.imag(self.w_theo(self.x, self.ti)))
 
         ax.set_xlabel(r"$x$")
         ax.set_ylabel(r"$|w|^2$")
@@ -211,15 +212,15 @@ class NLS_numerical(NLS_solutions):
                 line1.set_data(self.x, np.imag(self.w[j]))
 
             if theo and coord.lower() == "norm":
-                line2.set_data(self.x, norm(self.w_theo.w(self.x, self.ti + j*self.dt)))
+                line2.set_data(self.x, norm(self.w_theo(self.x, self.ti + j*self.dt)))
                 ax.legend()
                 
             if theo and coord.lower() == "real":
-                line2.set_data(self.x, np.real(self.w_theo.w(self.x, self.ti + j*self.dt)))
+                line2.set_data(self.x, np.real(self.w_theo(self.x, self.ti + j*self.dt)))
                 ax.legend()
 
             if theo and coord.lower() == "imag":
-                line2.set_data(self.x, np.imag(self.w_theo.w(self.x, self.ti + j*self.dt)))
+                line2.set_data(self.x, np.imag(self.w_theo(self.x, self.ti + j*self.dt)))
                 ax.legend()
 
             return line1, line2,
