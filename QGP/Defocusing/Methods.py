@@ -394,7 +394,7 @@ class Complex_CNFD(Time_CN):
         norm_v = norm(v)
         
         gp = self.dt/2 * (w + v) * (1 - (norm_w + norm_v)/2)
-        quasi = k * self.dt/4 * (w + v) * (self.A * (norm_w + norm_v))
+        quasi = k * self.l/4 * (w + v) * (self.A * (norm_w + norm_v))
         F_ = i * (v - w) + self.l/2 * self.A * (w + v) + gp + quasi
         F_conj = F_.conjugate()
 
@@ -494,8 +494,8 @@ class Complex_CNFD(Time_CN):
         quasi_dFdw = self.quasi_dFdw(w, w_c, v)
         quasi_dFdw_c = self.quasi_dFdw_c(w, w_c, v)
         
-        dFdw = (-i + self.dt/2) * self.I + self.l/2 * self.A - dFdw_nl + k * self.dt/4 * quasi_dFdw
-        dFdw_c = -dFdw_c_nl + k * self.dt/4 * quasi_dFdw_c
+        dFdw = -i * self.I + self.l/2 * self.A + dFdw_nl + k * self.l/4 * quasi_dFdw
+        dFdw_c = dFdw_c_nl + k * self.l/4 * quasi_dFdw_c
         dF_cdw = dFdw_c.conjugate()
         dF_cdw_c = dFdw.conjugate()
 
