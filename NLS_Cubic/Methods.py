@@ -376,7 +376,7 @@ class SemiImplicit(Focusing_NLS):
         self.w_theo = w_theo
 
         #  Set init condition
-        self.w[0] = self.w_theo.w(self.x, self.ti)
+        self.w[0] = self.w_theo(self.x, self.ti)
 
         if eps != 0:
             self.w[0][1:-1] += np.random.uniform(-1, 1, self.N-2)*eps
@@ -521,7 +521,7 @@ class Relaxation(Focusing_NLS):
         self.w_theo = w_theo
 
         #  Set init condition
-        self.w[0] = self.w_theo.w(self.x, self.ti)
+        self.w[0] = self.w_theo(self.x, self.ti)
         if eps != 0:
             self.w[0][1:-1] += np.random.uniform(-1, 1, self.N-2)*eps
 
