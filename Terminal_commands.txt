@@ -1,0 +1,53 @@
+ssh-add -t 30000
+
+ssh -AJ stapiama@ssh-lne.lille.inria.fr stapiama@heaven.lille.inria.fr
+
+ls : see files
+cd : change folder
+pwd : see path
+top: what is going on
+q: quit top
+mkdir: make directory
+cd ..: one up folder
+rm filename: Delete file
+rm -rf foldername/: Delete folder
+exit: Exit heaven
+du -sh directory_name: Size of the directory
+
+# Just in local
+scp -r  localpath stapiama@heaven.lille.inria.fr:heaven_path #local to heaven
+scp -r  stapiama@heaven.lille.inria.fr:heaven_path localpath #heaven to local
+
+ssh heaven.remote
+nohup python3 filename.py : launch the job (nohup important)
+
+nohup python3 filename.py & : launch the job in background
+
+nohup python3 -u filename.py $> nohup_name.out $ & : Save progress in nohup_name.out
+
+ ps -o etime= -p "PID" -> Time
+
+ --enable-64
+"Press CTRL Z" : to come back to my session
+
+jobs : check what's running
+cat nohup.out : see printings or errors in nohup
+tail nohup.out : see last printings # last 10 lines (print)
+top : See machine state
+kill + PID number (from "top") # PID in jobs
+
+
+/home/stapiama/QGP
+/home/stapiama/QGP/Defocusing
+
+
+## rsync commands
+
+rsync -r dir1 dir2 : Send dir1 to dir 2. Preserves the incoming folder
+rsync -r dir1/ dir2 : Send contents of dir1 to dir 2
+rsync -vrthP dir1/ dir2: Combination of flags. v, t, h and P are to visualize
+
+# With heaven
+
+rsync -vrthP localpath stapiama@heaven.lille.inria.fr:heavenpath : Local to Heaven
+rsync -vrthP stapiama@heaven.lille.inria.fr:heavenpath localpath : Heaven to Local

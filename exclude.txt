@@ -1,0 +1,13 @@
+LICENSE
+README.md
+NLS_Quin
+Tests and Results
+Heaven_scripts/Results
+__pycache__
+exclude.txt
+Terminal_commands.txt
+.git*
+.DS_Store
+.gitignore
+.ipynb_checkpoints/*
+.ipynb_checkpoints/

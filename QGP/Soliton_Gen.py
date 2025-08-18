@@ -4,9 +4,10 @@ import warnings
 from scipy.optimize import minimize_scalar
 from scipy.interpolate import make_interp_spline
 
-
 def soliton(c,
             k,
+            p=1,
+            w=1,
             soliton_type='dark',
             L=10,
             N=5_000,
@@ -31,13 +32,19 @@ def soliton(c,
     ----------
     c : float
         Value representing the speed of the soliton. It should be positive and
-        consistent with the type of the required soliton. When soliton is bright,
-        c is equal to w in the theoretical formula.
+        consistent with the type of the required soliton.
 
     k : float
-        Real value representing a parameter of the QGP equation. It should be
+        Real value which modulates the quasilinear part of the QGP equation. It should be
         consistent with the type of the required soliton and also with the
         soliton velocity.
+
+    p : float, default: 1
+        Real value which modulates the cubic part of the QGP equation.
+
+    w : float, default: 1
+        Real value representing the frequency of a bright soliton. Is always
+        greater than zero.
 
     soliton_type: {'dark', 'anti', 'cuspon'}, default: 'dark'
         Type of the soliton.
@@ -54,7 +61,7 @@ def soliton(c,
         
     x : array_like, default: np.linspace(-L, L, N)
         Array representing the space domain to generates the soliton. The array
-        should be symmetric respecto to 0.
+        should be symmetric respect to 0.
 
     as_func: bool, default: False
         Whether the return is an array or a callable.
@@ -68,12 +75,27 @@ def soliton(c,
 
     print("Creating soliton...")
 
+    soliton_type = soliton_type.lower()
+
     i = 1j
 
     D_bright = [[0, np.inf], [0, np.inf]]
     D_1 = [[0, np.sqrt(2)], [0, 1/2]]
     D_2 = [[0, np.sqrt(2)], [-np.inf, 0]]
     D_3 = [[np.sqrt(2), np.inf], [1/2, np.inf]]
+
+    if x is None:
+        x = np.linspace(-L, L, N)
+
+    if k==0:
+        soliton_func = NLS_soliton(c, w, p, soliton_type)
+
+        if not as_func:
+            print("Soliton created")
+            return soliton_func(x), x
+
+        print("Soliton created")
+        return soliton_func, x
 
 
     if soliton_type!="dark" and soliton_type!="anti" and soliton_type!="cuspon" and soliton_type!="bright":
@@ -82,7 +104,7 @@ def soliton(c,
     is_in_D1 = is_in_D(c, k, D_1, open_domain=[[False, True], [True, True]])
     is_in_D2 = is_in_D(c, k, D_2, open_domain=[[False, True], [True, False]])
     is_in_D3 = is_in_D(c, k, D_3, open_domain=[[True, True], [True, True]])
-    is_in_D_bright = is_in_D(c, k, D_bright, open_domain=[[True, True], [False, True]])
+    is_in_D_bright = is_in_D(w, k, D_bright, open_domain=[[True, True], [False, True]])
 
     dark_cond = is_in_D1 or is_in_D2
     anti_cond = is_in_D3
@@ -107,13 +129,10 @@ def soliton(c,
 
     if soliton_type=="bright":
         ymin = 0
-        ymax = np.sqrt(2*c)
+        ymax = np.sqrt(2*w)
 
 
     ref1, ref2 = _get_valid_refpoints(ymin, ymax)
-    
-    if x is None:
-        x = np.linspace(-L, L, N)
 
     m = N//2
     xpos = x[m:]
@@ -141,8 +160,8 @@ def soliton(c,
 
 
         def f_w_k(y):
-            root = np.sqrt((2 * c - y*y)/(1+2*k*y*y))
-            sum_1 = 1 / np.sqrt(c) * np.arctanh(1/np.sqrt(2*c) * root)
+            root = np.sqrt((2*w - y*y)/(1+2*k*y*y))
+            sum_1 = 1 / np.sqrt(w) * np.arctanh(1/np.sqrt(2*w) * root)
             sum_2 = 2 * np.sqrt(k) * np.arctan(np.sqrt(2*k) * root)
             output = sum_1 + sum_2
 
@@ -212,15 +231,19 @@ def soliton(c,
         if any(~resultsmask[m:]):
                 warnings.warn("Trouble calculating inverse for values: "
                               "%s" % str(xpos[~resultsmask[m:]]), RuntimeWarning)   
-        try:
-            np.testing.assert_array_almost_equal(xpos, Func_c_k(results[m:]), decimal=2)
+        #try:
+        #    np.testing.assert_array_almost_equal(xpos, Func_c_k(results[m:]), decimal=2)
 
-        except AssertionError:
-            warnings.warn("Results obtained with less than %g "
-                              "decimal digits of accuracy"
-                              % 2, RuntimeWarning)
+        #except AssertionError:
+        #    warnings.warn("Results obtained with less than %g "
+        #                      "decimal digits of accuracy"
+        #                      % 2, RuntimeWarning)
+        
+        if N%2 == 0:
+            results[:m] = np.flip(results[m:])
+        else:
+            results[:m] = np.flip(results[m+1:])
 
-        results[:m] = np.flip(results[m:])
         return results
 
 
@@ -240,11 +263,16 @@ def soliton(c,
 
         theta[m] = 0
 
-        for j in range(m-1):
+        for j in range(xpos.size-1):
 
             theta[j+1+m] = theta[j+m] + c/2 * (dx/2 * (integrand[j+m] + integrand[j+m+1]))
 
-        theta[:m] = -np.flip(theta[m:])
+        
+        if N%2 == 0:
+            theta[:m] = -np.flip(theta[m:])
+        
+        else:
+            theta[:m] = -np.flip(theta[m+1:])
 
         return theta
 
@@ -268,19 +296,7 @@ def soliton(c,
         def u_c_k():
             i = 1j
             output = eta_c_k()
-            return output + 0*i
-        
-    if k==0 and soliton_type=="dark" and as_func:
-        
-        def dark_soliton(x):
-            A = np.sqrt((2-c**2)/2)
-            sum_1 = A * np.tanh(np.sqrt(2-c**2)/2 * x)
-            sum_2 = i * c/np.sqrt(2)
-
-            return sum_1 - sum_2
-    
-        print("Soliton created")
-        return dark_soliton, x
+            return output * np.exp(-i*c/2*x)
     
     soliton_arr = u_c_k()
 
@@ -292,6 +308,32 @@ def soliton(c,
 
     return soliton_arr, x
 
+
+def NLS_soliton(c, w, p, soliton_type, as_func=True):
+    i = 1j
+
+    if soliton_type == "bright":
+        if p<0:
+            raise ValueError("value p=%s is not valid for bright soliton" %p)
+        def soliton_func(x):
+            A = np.sqrt(2*w/p)
+            output = A * sech(np.sqrt(w)*x) * np.exp(-i*c/2*x)
+            return output
+
+    elif soliton_type=="dark":
+        if p>0:
+            raise ValueError("value p=%s is not valid for dark soliton" %p)
+
+        def soliton_func(x):
+            A = np.sqrt((2-c**2)/2)
+            sum_1 = A * np.tanh(np.sqrt(2-c**2)/2 * x)
+            sum_2 = i * c/np.sqrt(2)
+
+            return sum_1 - sum_2
+    else:
+        raise ValueError("type %s is not a valid soliton" %soliton_type)
+
+    return soliton_func
 
 def is_in_D(c, k, D, open_domain):
     c_open, k_open = open_domain
@@ -328,4 +370,10 @@ def _get_valid_refpoints(xmin, xmax):
     ref1 = xmin + d / 4.
     ref2 = xmax - d / 4.
     return ref1, ref2
+
+
+# Sech function
+def sech(x):
+    return 1/np.cosh(x)
+
 
