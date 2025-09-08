@@ -399,6 +399,13 @@ FodyWeavers.xsd
 .DS_Store
 /QGP/.ipynb_checkpoints
 /QGP/Tests/.ipynb_checkpoints
+/Tests/GP/.ipynb_checkpoints 
+/Tests/QGP/.ipynb_checkpoints
+/QGP/Tests/.ipynb_checkpoints   
+/Tests/.ipynb_checkpoints
+/Tests/Comparisons/.ipynb_checkpoints
+/NLS_Cubic/.ipynb_checkpoints
+/QGP/Tests/.ipynb_checkpoints
 /Tests/GP/.ipynb_checkpoints
 /Tests/QGP/.ipynb_checkpoints
 /QGP/Tests/.ipynb_checkpoints
@@ -417,3 +424,4 @@ FodyWeavers.xsd
 /Tests and Results/.ipynb_checkpoints
 .ipynb_checkpoints
 /Tests and Results/QGP/Blow_up/Data/Local
+
