@@ -397,23 +397,15 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 .DS_Store
+NLS_Quin/Focusing/.ipynb_checkpoints/Base-checkpoint.py
+NLS_Quin/Focusing/.ipynb_checkpoints/Numerical-checkpoint.py
+/NLS_Quin/Focusing/.ipynb_checkpoints
+*.icloud
+*.pkl
 /QGP/.ipynb_checkpoints
-/QGP/Tests/.ipynb_checkpoints
+/Tests/Comparisons/.ipynb_checkpoints
 /Tests/GP/.ipynb_checkpoints
 /Tests/QGP/.ipynb_checkpoints
-/QGP/Tests/.ipynb_checkpoints
-/Tests/.ipynb_checkpoints
-/Tests/Comparisons/.ipynb_checkpoints
-/NLS_Cubic/.ipynb_checkpoints
-/.ipynb_checkpoints
-/NLS_Cubic/NLS_defocusing/.ipynb_checkpoints
-/NLS_Cubic/NLS_focusing/.ipynb_checkpoints
-/NLS_Cubic/.ipynb_checkpoints
-/NLS_Cubic/.ipynb_checkpoints
-/QGP/Defocusing/.ipynb_checkpoints
-/QGP/Focusing/.ipynb_checkpoints
-/Tests/Comparisons/Img/.ipynb_checkpoints
-/Heaven_scripts
-/Tests and Results/.ipynb_checkpoints
+/NLS_Quin/Focusing/Tests/.ipynb_checkpoints
+Heaven_scripts/
 .ipynb_checkpoints
-/Tests and Results/QGP/Blow_up/Data/Local
