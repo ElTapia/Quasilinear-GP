@@ -20,12 +20,16 @@ plt.style.use(['science', 'grid']) #'ieee'
 plt.rcParams.update({
     'pgf.texsystem': 'pdflatex',
     'mathtext.fontset': 'cm', #'stix',
+    "text.latex.preamble": r"\usepackage{amsmath,amssymb}",
     'font.family': 'serif',
     "font.serif": ["Computer Modern Roman"],
     'text.usetex': True,
     'pgf.rcfonts': False,
-    'axes.formatter.use_mathtext':True
+    'axes.formatter.use_mathtext':True,
+    "grid.linewidth" : .5,
+    "grid.alpha": .1
 })
+
 
 plt.rcParams['figure.dpi'] = 150
 plt.rcParams["font.serif"] = "Times"
