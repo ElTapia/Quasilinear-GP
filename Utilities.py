@@ -17,29 +17,74 @@ def sech(x):
     return 1/np.cosh(x)
 
 # Newton method
-def newton(x_0, f, f_prime, h, tol=1e-10, max_iter=1000):
-    x_k = x_0
-    error = np.add.reduce(np.abs(f(x_k)))
-    j = 0
-    while error > tol:
-        #print(error)
-        f_1 = -f(x_k)
-        f_2 = f_prime(x_k)
+#def newton(x_0, f, f_prime, h, tol=1e-10, max_iter=1000):
+#    x_k = x_0
+#    error = np.add.reduce(np.abs(f(x_k)))
+#    j = 0
+#    while error > tol:
+#        #print(error)
+#        f_1 = -f(x_k)
+#        f_2 = f_prime(x_k)
         #plt.plot(norm(f_1[:len(x_k)//4]))
         #plt.plot(norm(x_k[:len(x_k)//2]))
         #plt.show()
-        delta_x = spsolve(f_2, f_1, permc_spec="MMD_AT_PLUS_A")
-        x_k_1 = x_k + delta_x
-        error = np.sqrt(h) * np_norm(delta_x, 2) #np_norm(f(x_k_1), np.inf)
-        x_k = x_k_1
-        j += 1
+#        delta_x = spsolve(f_2, f_1, permc_spec="MMD_AT_PLUS_A")
+#        x_k_1 = x_k + delta_x
+#        error = np_norm(f(x_k_1), 2) #np.sqrt(h) * np_norm(delta_x, 2) #
+#        x_k = x_k_1
+#        j += 1
 
-        if j>max_iter:
-            print("Simulation reaches maximum iterations. Stoping...")
-            error = float('NaN')
+#        if j>max_iter:
+#            print("Simulation reaches maximum iterations. Stoping...")
+#            error = float('NaN')
+#            break
+
+#    return x_k, error, j
+
+
+def l2h(v, h):
+    return np.sqrt(h) * np_norm(v.ravel(), 2)
+
+
+# Newton method
+def newton(x_0, f, f_prime, h,
+           tolF=1e-10,
+           tolX_abs=0.0, tolX_rel=1e-10,
+           max_iter=1000):
+    x_k = x_0
+    r = f(x_k)
+    r0_norm = l2h(r, h)
+    tolF_eff = max(tolF, tolF * r0_norm)  # criterio relativo para el residuo
+
+    j = 0
+    while True:
+        # criterio principal: residuo
+        r_norm = l2h(r, h)
+        if r_norm <= tolF_eff:
             break
 
-    return x_k, error, j
+        # paso de Newton
+        J = f_prime(x_k)
+        delta_x = spsolve(J, -r, permc_spec="MMD_AT_PLUS_A")
+
+        # criterio secundario: tamaño de paso
+        step_norm = l2h(delta_x, h)
+        if step_norm <= (tolX_abs + tolX_rel * l2h(x_k, h)):
+            break
+
+        # actualización
+        x_k = x_k + delta_x
+        r = f(x_k)
+
+        j += 1
+        if j > max_iter:
+            print("Simulation reaches maximum iterations. Stopping...")
+            r_norm = float('NaN')
+            break
+
+    return x_k, r_norm, j
+
+
 
 # Fixed point
 def fixed_point(x_0, g, h, tol=1e-12, max_iter=1000):
