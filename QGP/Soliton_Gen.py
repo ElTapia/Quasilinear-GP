@@ -12,7 +12,11 @@ def soliton(c,
             L=10,
             N=5_000,
             x=None,
-            as_func=False):
+            get_profs=False,
+            as_func=False,
+            eps_smooth=None,
+            reg_1=True,
+            reg_2=False):
 
     r"""Obtain a soliton for the QGP equation.
 
@@ -50,7 +54,7 @@ def soliton(c,
         Type of the soliton.
         - 'dark': Generates a Dark soliton. Lives in D_1 and D_2.
         - 'anti': Generates an Anti Dark soliton. Lives in D_3.
-        - 'cuspon': TODO: COMPLETE
+        - 'cuspon': Generates a cuspon. Lives in D_3.
 
     L: float, default: 10
         Value representig the width of the spatial domain. It should be
@@ -63,8 +67,14 @@ def soliton(c,
         Array representing the space domain to generates the soliton. The array
         should be symmetric respect to 0.
 
+    get_profs: bool, defalt: False
+        Return eta and theta from the inverse function
+
     as_func: bool, default: False
         Whether the return is an array or a callable.
+
+    eps_smooth: float, default: None
+        Smooth factor for cuspons
 
     Returns
     -------
@@ -87,15 +97,27 @@ def soliton(c,
     if x is None:
         x = np.linspace(-L, L, N)
 
+    x_return = x.copy()
+
+    if eps_smooth is not None:
+        if reg_1:
+            x = np.sqrt(x**2 + eps_smooth)
+
+        elif reg_2:
+            x = np.sqrt(x**2 + eps_smooth**2) - eps_smooth
+
+        else:
+            print("No regularizator!")
+
     if k==0:
         soliton_func = NLS_soliton(c, w, p, soliton_type)
 
         if not as_func:
             print("Soliton created")
-            return soliton_func(x), x
+            return soliton_func(x), x_return
 
         print("Soliton created")
-        return soliton_func, x
+        return soliton_func, x_return
 
 
     if soliton_type!="dark" and soliton_type!="anti" and soliton_type!="cuspon" and soliton_type!="bright":
@@ -121,16 +143,17 @@ def soliton(c,
 
     # Domain
     ymin = 0
-    ymax = 1-c*c/2
+    ymax = 1 - c * c / 2
     
     if soliton_type=="anti":
-        ymin = 1-c*c/2
+        ymin = 1 - c * c / 2
         ymax = 0
 
     if soliton_type=="bright":
-        ymin = 0
         ymax = np.sqrt(2*w)
 
+    if soliton_type=="cuspon" and is_in_D3:
+        ymax = 1 - 1 / (2 * k)
 
     ref1, ref2 = _get_valid_refpoints(ymin, ymax)
 
@@ -147,10 +170,10 @@ def soliton(c,
         if soliton_type=="anti":
             valid_mask = (y >= ymin) & (y < ymax)
             
-        if soliton_type=="bright":
+        if soliton_type=="bright" or soliton_type=="cuspon":
             valid_mask = (y > ymin) & (y < ymax)
 
-        def f_c_k(y):
+        def F_c_k(y):
             root = np.sqrt((2-c*c-2*y)/(1-2*k+2*k*y))
             sum_1 = 2 * np.sqrt(k) * np.arctan(np.sqrt(k) * root)
             sum_2 = 2 * np.sqrt((1-2*k)/(2-c*c)) * np.arctanh(np.sqrt((1-2*k)/(2-c*c)) * root)
@@ -159,7 +182,7 @@ def soliton(c,
             return output
 
 
-        def f_w_k(y):
+        def F_w_k(y):
             root = np.sqrt((2*w - y*y)/(1+2*k*y*y))
             sum_1 = 1 / np.sqrt(w) * np.arctanh(1/np.sqrt(2*w) * root)
             sum_2 = 2 * np.sqrt(k) * np.arctan(np.sqrt(2*k) * root)
@@ -168,7 +191,7 @@ def soliton(c,
             return output
     
 
-        def g_c_k(y):
+        def G_c_k(y):
             root = np.sqrt((2-c*c-2*y)/(1-2*k+2*k*y))
             sum_1 = -2 * np.sqrt(-k) * np.arctanh(np.sqrt(-k) * root)
             sum_2 = 2 * np.sqrt((1-2*k)/(2-c*c)) * np.arctanh(np.sqrt((1-2*k)/(2-c*c)) * root)
@@ -176,14 +199,24 @@ def soliton(c,
             return output
 
 
+        def f_c_k(y):
+            sum_1 = 2 * np.sqrt(k) * np.arctan(np.sqrt(k) * np.sqrt((2 - c**2 - 2*y) / (1 - 2*k + 2*k*y)))
+            sum_2 = 2 * np.sqrt((1 - 2*k) / (2 - c**2)) * np.arctanh(np.sqrt(((2 - c**2) * (1 - 2*k + 2*k*y)) / ((1 - 2*k) * (2 - c**2 - 2*y))))
+            sum_3 = np.pi * np.sqrt(k)
+
+            return sum_1 + sum_2 - sum_3
+
         if (soliton_type == "dark" and is_in_D1) or (soliton_type == "anti" and is_in_D3):
-            func_c_k = f_c_k
+            func_c_k = F_c_k
 
         elif soliton_type == "dark" and is_in_D2:
-            func_c_k = g_c_k
+            func_c_k = G_c_k
         
         elif soliton_type == "bright" and is_in_D_bright:
-            func_c_k = f_w_k
+            func_c_k = F_w_k
+
+        elif soliton_type == "cuspon" and is_in_D3:
+            func_c_k = f_c_k
 
         # Increasing or decreasing trend
         trend = np.sign(func_c_k(ref2) - func_c_k(ref1))
@@ -191,6 +224,9 @@ def soliton(c,
         # Assign infinite to values outside the domain
         val = np.full_like(y, -np.inf*trend, dtype=np.float64)
         val[y > ymax] = np.inf * trend
+
+        if soliton_type == "cuspon" and is_in_D3:
+            val[y > ymax] = 0
 
         val[valid_mask] = func_c_k(y[valid_mask])
 
@@ -283,12 +319,20 @@ def soliton(c,
         eta = eta_c_k()
 
         if c == 0:
-            output = np.sign(x) * np.sqrt(1 - eta)
-            return output + 0*i
-            
+            output = np.sign(x_return) * np.sqrt(1 - eta)
+
+            if get_profs:
+                return output + 0*i, eta
+
+            else:
+                return output + 0*i
 
         rho = rho_c_k(eta)
         theta = theta_c_k(eta)
+
+        if get_profs:
+             return rho * np.exp(i*theta), eta, theta
+
         return rho * np.exp(i*theta)
 
 
@@ -297,16 +341,30 @@ def soliton(c,
             i = 1j
             output = eta_c_k()
             return output * np.exp(-i*c/2*x)
+
+    if get_profs:
+        
+        soliton_arr, eta, theta = u_c_k()
     
-    soliton_arr = u_c_k()
+        print("Soliton created")
 
-    print("Soliton created")
+        if as_func:
+            soliton_func = make_interp_spline(x, soliton_arr)
+            return soliton_func, x_return, eta, theta
 
-    if as_func:
-        soliton_func = make_interp_spline(x, soliton_arr)
-        return soliton_func, x
+        return soliton_arr, x_return, eta, theta
 
-    return soliton_arr, x
+    else:
+        
+        soliton_arr = u_c_k()
+    
+        print("Soliton created")
+
+        if as_func:
+            soliton_func = make_interp_spline(x, soliton_arr)
+            return soliton_func, x_return
+
+        return soliton_arr, x_return
 
 
 def NLS_soliton(c, w, p, soliton_type, as_func=True):

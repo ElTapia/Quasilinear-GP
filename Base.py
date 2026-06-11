@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.sparse import diags, identity, block_array, kron, csc_matrix
 from matplotlib import animation
 from time import time
 from abc import ABC, abstractmethod
@@ -52,6 +53,10 @@ class NLS_numerical(NLS_solutions):
         self.h = np.abs(self.x[1] - self.x[0]) #2*L/self.N
         self.dt = np.abs(self.t[1] - self.t[0]) #(self.tf-self.ti)/self.Nt
         self.x_0 = x_0
+
+        # matrices
+        self.D1 = self.build_D1(self.N, self.h)
+        self.D2 = self.build_D2(self.N, self.h)
 
         self.local = local
         self.print_iteration = print_iteration
@@ -137,6 +142,147 @@ class NLS_numerical(NLS_solutions):
     @abstractmethod
     def update(self, n, **kwargs):
         pass
+
+    @abstractmethod
+    def energy(self, w, h, k, N):
+        pass
+
+    @abstractmethod
+    def mass(self, w, h, N):
+        pass
+    
+    def build_D1(self, N, h):
+        # First derivative matrix (forward)
+        D1 = diags([-1.0, 1.0], offsets=[0, 1], shape=(N-1, N), format="csr")
+        D1 /= h
+        return D1
+
+    def build_D2(self, N, h):
+        e = np.ones(N)
+
+        D2 = diags(
+            diagonals=[e, -2.0 * e, e],
+            offsets=[-1, 0, 1],
+            shape=(N, N),
+            format="lil"
+        )
+
+        # Boundary adjustments for homogeneous Neumann with centered scheme
+        D2[0, 1] = 2.0
+        D2[-1, -2] = 2.0
+
+        return D2.tocsr() / h**2
+
+
+    def norm_h_2_plus_2(self, w, h, N):
+        w0 = w[0]
+        wJ = w[-1]
+        return h * (np.sum(norm(w[1:N-1])) + 0.5*(norm(w0) + norm(wJ)))
+
+
+    def norm_h_2_to_2(self, w, h, N):
+            w0 = w[0]
+            wJ = w[-1]
+            return h * np.sum(norm(w[:N-1]))
+
+
+    def norm_h_4_to_4(self, w, h, N):
+        w0 = w[0]
+        wJ = w[-1]
+        return h * (np.sum(np.abs(w[1:N-1])**4) + 0.5*(np.abs(w0)**4 + np.abs(wJ)**4))
+
+
+    def get_mass(self, plot=False, name=None, **kwargs):
+
+        if self.save_as_files is not None and self.save_properties:
+            if self.local:
+                wn_r = self.w[np.abs(self.x-self.x_0)<self.L_tilde]
+                m_r = self.mass(wn_r, self.h, self.N)
+                #m_r = self.h * np.sum(norm(wn_r))
+    
+                self.to_save_mass_R[self.save_iter] = m_r
+
+                wn_l = self.w[np.abs(self.x+self.x_0)<self.L_tilde]
+                m_l = self.mass(wn_l, self.h, self.N)
+                #m_l = self.h * np.sum(norm(wn_l))
+    
+                self.to_save_mass_L[self.save_iter] = m_l
+
+            wn = self.w
+            m = self.mass(wn, self.h, self.N)
+            #m = self.h * np.sum(norm(wn))
+    
+            self.to_save_mass[self.save_iter] = m
+
+        else:
+            mass = np.zeros(self.Nt)
+            for n in range(self.Nt):
+                wn = self.w[n]
+                m = self.mass(wn, self.h, self.N)
+                #m = self.h * np.sum(norm(self.w[n]))
+
+                mass[n] = m
+                
+            if plot:
+                plt.plot(self.t, mass-mass[0], **kwargs)
+    
+                plt.xlabel(r"$t$")
+                plt.ylabel(r"$N(t)-N(0)$")
+                plt.tight_layout()
+    
+                if name is not None:
+                    plt.savefig(self.path+name, dpi=300, bbox_inches = "tight")
+                plt.show()
+    
+            return mass
+    
+
+    def get_energy(self, w=None, plot=False, name=None, **kwargs):
+        k = self.pars["k"]
+
+        if w is not None:
+            e = self.energy(w, self.h, k, self.N)
+            return e
+
+        if self.save_as_files is not None and self.save_properties:
+            if self.local:
+                wn_r = self.w[np.abs(self.x-self.x_0)<self.L_tilde]
+
+                e_r = self.energy(wn_r, self.h, k, self.N)
+
+                wn_l = self.w[np.abs(self.x+self.x_0)<self.L_tilde]
+
+                e_l = self.energy(wn_l, self.h, k, self.N)
+
+                self.to_save_energy_R[self.save_iter] = e_r
+                self.to_save_energy_L[self.save_iter] = e_l
+
+            wn = self.w
+
+            e = self.energy(wn, self.h, k, self.N)
+
+            self.to_save_energy[self.save_iter] = e
+
+        else:
+            energy = np.zeros(self.Nt)
+            for n in range(self.Nt):
+                wn = self.w[n]
+                e = self.energy(wn, self.h, k, self.N)
+                energy[n] = e
+
+            if plot:
+                energy = np.trim_zeros(energy)
+                plt.plot(self.t, energy-energy[0], **kwargs)
+        
+                plt.xlabel(r"$t$")
+                plt.ylabel(r"$E(t)-E(0)$")
+                plt.tight_layout()
+        
+                if name is not None:
+                    plt.savefig(self.path+name, dpi=300, bbox_inches = "tight")
+                plt.show()
+        
+            return energy
 
 
     def set_w_theo(self, w_theo, eps=0, sigma=0):
@@ -265,19 +411,25 @@ class NLS_numerical(NLS_solutions):
 
             self.save_iter += 1
 
-    def solve(self, Nelem=None, b_tol=None, return_max=False, print_tf=False, **kwargs):
+    def solve(self, Nelem=None, b_tol=None, return_max=False, print_tf=False, energy_perc=None, norm_inf_stop=None, **kwargs):
         init_time = time()
+        self.time = init_time
 
         if type(Nelem) is np.ndarray:
             self.save_index = 0
         
         if self.save_as_files is None:
+
+            if energy_perc is not None:
+                energy_0 = self.get_energy(self.w[0])
+
             for n in range(self.Nt-1):
                 if self.stop:
                     print(self.stop_message, n)
                     break
-    
+
                 self.w[n+1] = self.update(n, **kwargs)
+
                 if b_tol is not None:
                     border_cond_left = np.abs(norm(self.w[n+1][0])-self.background) > b_tol
                     border_cond_right = np.abs(norm(self.w[n+1][-1])-self.background) > b_tol
@@ -285,10 +437,31 @@ class NLS_numerical(NLS_solutions):
                         self.stop = True
                         self.stop_message = "Simulation reached the border in n ="
 
+                if energy_perc is not None:
+                    actual_energy = self.get_energy(self.w[n+1])
+                    variation_perc = (actual_energy - energy_0)/energy_0 * 100
+
+                    if np.abs(variation_perc) >= energy_perc:
+                        self.stop = True
+                        self.stop_message = "Energy varied {}% in n =".format(variation_perc)
+
+                if norm_inf_stop is not None:
+                    if self.background == 0:
+                        actual_norm_inf = np_norm(self.w[n+1], np.inf)
+                    else:
+                        actual_norm_inf = np.min(np.abs(self.w[n+1]))
+
+                    if actual_norm_inf > norm_inf_stop:
+                        self.stop = True
+                        self.stop_message = "norm_inf exceeded threshold ({}) in n =".format(norm_inf_stop)
+
         else:
             if return_max:
                 w_max = np.zeros(self.Nt)
                 w_max[0] = np.max(np.abs(self.w))
+
+            if energy_perc is not None:
+                energy_0 = self.get_energy(self.w)
 
             for n in range(self.Nt-1):
 
@@ -300,7 +473,26 @@ class NLS_numerical(NLS_solutions):
                     if border_cond_left or border_cond_right:
                         self.stop = True
                         self.stop_message = "Simulation reached the border in n ="
-                        
+
+                if energy_perc is not None:
+                    actual_energy = self.get_energy(new_w)
+                    variation_perc = (actual_energy - energy_0)/energy_0 * 100
+
+                    if variation_perc >= energy_perc:
+                        self.stop = True
+                        self.stop_message = "Energy increased {}% in n =".format(variation_perc)
+
+                if norm_inf_stop is not None:
+                    if self.background == 0:
+                        actual_norm_inf = np_norm(new_w, np.inf)
+                    else:
+                        actual_norm_inf = np.min(np.abs(new_w))
+
+                    if actual_norm_inf > norm_inf_stop:
+                        self.stop = True
+                        self.stop_message = "norm_inf exceeded threshold ({}) in n =".format(norm_inf_stop)
+                        new_w = self.w
+
                 self.w = new_w
 
                 if return_max:
@@ -352,7 +544,7 @@ class NLS_numerical(NLS_solutions):
             return np.array(w_max)
 
     def get_error(self, t=None, p=2):
-
+        D1 = self.build_D1(self.N, self.h)
         if self.save_as_files is not None and self.save_properties and t is None:
             w_sim = self.w
             t = self.t[self.save_iter]#(self.save_iter - 1) * self.Nt
@@ -364,10 +556,10 @@ class NLS_numerical(NLS_solutions):
             err_inf = np_norm((w_sim - w_theo), np.inf)
             self.to_save_error_inf[self.save_iter] = err_inf
 
-            err_H1 = np.sqrt(self.h) * np_norm((np.gradient(w_sim) - np.gradient(w_theo)), 2)
+            err_H1 = np.sqrt(self.h) * np_norm((D1 @ (w_sim - w_theo)), 2)
             self.to_save_error_H1[self.save_iter] = err_H1
 
-            err_grad_inf = np_norm((np.gradient(w_sim) - np.gradient(w_theo)), np.inf)
+            err_grad_inf = np_norm((D1 @ (w_sim - w_theo)), np.inf)
             self.to_save_error_grad_inf[self.save_iter] = err_grad_inf
 
             return err_L2, err_inf, err_H1, err_grad_inf
@@ -407,7 +599,7 @@ class NLS_numerical(NLS_solutions):
             output = np.sqrt(self.h * sum_)
             return output
 
-    def get_norm_inf(self, plot=False, name=None):
+    def get_norm_inf(self, plot=False, name=None, path=None):
 
         if self.save_as_files is not None and self.save_properties:
 
@@ -509,12 +701,14 @@ class NLS_numerical(NLS_solutions):
                 self.to_save_arg_min[self.save_iter] = arg_min
 
 
-    def get_H_norms(self, plot=False, name=None):
+    def get_H_norms(self, plot=False, name=None, path=None):
 
         if self.save_as_files is not None and self.save_properties:
             wn = self.w
-            H1_norm = np.sqrt(self.h) * np_norm(np.gradient(wn, self.h), 2)
-            H2_norm = np.sqrt(self.h) * np_norm(np.gradient(np.gradient(wn, self.h), self.h), 2)
+            H1_norm = np.sqrt(np.sum(self.h * np.abs(self.D1@wn)**2))
+            #np.gradient(wn, self.h), 2)
+            H2_norm = np.sqrt(np.sum(self.h * np.abs(self.D2@wn)**2))
+            #np.sqrt(self.h) * np_norm( , 2)#np.gradient(np.gradient(wn, self.h), self.h), 2)
             grad_norm_inf = np_norm(np.gradient(wn, self.h), np.inf)
 
             self.to_save_H1_norm[self.save_iter] = H1_norm
@@ -540,7 +734,7 @@ class NLS_numerical(NLS_solutions):
     
             return grad_norm
 
-    def get_virial(self, plot=False, name=None):
+    def get_virial(self, plot=False, name=None, path=None):
 
         if self.save_as_files is not None and self.save_properties:
             wn = self.w
@@ -555,7 +749,7 @@ class NLS_numerical(NLS_solutions):
                 virial[n] = v_n
 
             if plot:
-                plt.plot(self.t, grad_norm, ".")
+                plt.plot(self.t, virial, ".")
     
                 plt.xlabel(r"$t$")
                 plt.ylabel(r"$V(t)$")
@@ -567,37 +761,29 @@ class NLS_numerical(NLS_solutions):
     
             return virial
 
-    # Define mass for all n
-    @abstractmethod
-    def get_mass(self, plot=False, name=None):
-        pass
-
-    @abstractmethod
-    def get_energy(self, plot=False, name=None):
-        pass
 
     def get_execution_time(self):
         return self.time
 
 
-    def plot(self, t, marker="", markersize=5, label=None):
+    def plot(self, t,  **kwargs):
         n = int((t - self.ti)/self.dt)
-        plt.plot(self.x, norm(self.w[n]), marker, markersize=markersize, label=label)
+        plt.plot(self.x, norm(self.w[n]),  **kwargs)
         plt.xlabel(r"$x$")
         plt.ylabel(r"$|\Psi|^2$")
 
 
-    def plot_real(self, t, label=None):
+    def plot_real(self, t,  **kwargs):
         n = int((t - self.ti)/self.dt)
-        plt.plot(self.x, np.real(self.w[n]), label=label)
+        plt.plot(self.x, np.real(self.w[n]),  **kwargs)
         plt.xlabel(r"$x$")
         plt.ylabel(r"Re$(\Psi)$")
 
-    def plot_imag(self, t, label=None):
+    def plot_imag(self, t, **kwargs):
         n = int((t - self.ti)/self.dt)
-        plt.plot(self.x, np.imag(self.w[n]), label=label)
+        plt.plot(self.x, np.imag(self.w[n]), **kwargs)
         plt.xlabel(r"$x$")
-        plt.ylabel(r"Imag$(\Psi)$")
+        plt.ylabel(r"Im$(\Psi)$")
 
 
     def animate_solution(self, name, N_frames, theo=False, coord="norm", auto_adjust=True, N_final=False):

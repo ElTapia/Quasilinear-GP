@@ -30,95 +30,33 @@ class Defocusing_QGP(NLS_numerical):
             self.arg_min_path = self.path + "arg_min"
             self.to_save_arg_min = np.zeros(self.Nt)
 
-    def get_mass(self, plot=False, name=None):
-
-        if self.save_as_files is not None and self.save_properties:
-            if self.local:
-                wn_r = self.w[np.abs(self.x-self.x_0)<self.L_tilde]
-                m_r = self.h * np.sum(self.background-(2*self.background-1)*norm(wn_r))
+    def mass(self, w, h, N):
     
-                self.to_save_mass_R[self.save_iter] = m_r
-
-                wn_l = self.w[np.abs(self.x+self.x_0)<self.L_tilde]
-                m_l = self.h * np.sum(self.background-(2*self.background-1)*norm(wn_l))
-    
-                self.to_save_mass_L[self.save_iter] = m_l
-
-            wn = self.w
-            m = self.h * np.sum(self.background-(2*self.background-1)*norm(wn))
-
-            self.to_save_mass[self.save_iter] = m
-
-        else:
-            mass = np.zeros(self.Nt)
-            for n in range(self.Nt):
-                m = self.h * np.sum(self.background-(2*self.background-1)*norm(self.w[n]))
-                mass[n] = m
-                
-            if plot:
-                plt.plot(self.t, mass-mass[0], ".")
-    
-                plt.xlabel(r"$t$")
-                plt.ylabel(r"$N(t)-N(0)$")
-                plt.tight_layout()
-    
-                if name is not None:
-                    plt.savefig(self.path+name, dpi=300, bbox_inches = "tight")
-                plt.show()
-    
-            return mass
+        if self.background == 0:
+            return self.norm_h_2_plus_2(norm(w), h, N)
+        
+        elif self.background == 1:
+             return self.h * np.sum(1 - norm(w[1:-1])) + self.h/2 * (1 - norm(w[0]) + 1 - norm(w[-1]))
 
 
-    def get_energy(self, plot=False, name=None):
-        k = self.pars["k"]
+
+    def energy(self, w, h, k, N):
+        w0 = w[0]
+        wJ = w[-1]
+
         bground_sign = 2*self.background-1
 
-        if self.save_as_files is not None and self.save_properties:
-            wn = self.w
-            if self.local:
-                wn_r = self.w[np.abs(self.x-self.x_0)<self.L_tilde]
-    
-                e_r = self.h * np.sum(1/2 * norm(np.gradient(wn_r, self.h)) + 
-                               bground_sign*1/4 * (self.background-bground_sign*norm(wn_r))**2 - 
-                                k/4 * (np.gradient(norm(wn_r), self.h))**2)
-    
-                wn_l = self.w[np.abs(self.x+self.x_0)<self.L_tilde]
-    
-                e_l = self.h * np.sum(1/2 * norm(np.gradient(wn_l, self.h)) + 
-                               bground_sign*1/4 * (self.background-bground_sign*norm(wn_l))**2 - 
-                                k/4 * (np.gradient(norm(wn_l), self.h))**2)
-    
-                self.to_save_energy_R[self.save_iter] = e_r
-                self.to_save_energy_L[self.save_iter] = e_l
+        D1 = self.build_D1(N, h)
 
-            e = self.h * np.sum(1/2 * norm(np.gradient(wn, self.h)) + 
-                               bground_sign*1/4 * (self.background-bground_sign*norm(wn))**2 - 
-                                k/4 * (np.gradient(norm(wn), self.h))**2)
+        dw = D1 @ w
+        dw2 = D1 @ norm(w)
 
-            self.to_save_energy[self.save_iter] = e
+        Dw_norm_2 = self.norm_h_2_to_2(dw, h, N)
+        w_norm_4 = self.norm_h_2_plus_2(self.background-bground_sign*norm(w), h, N)
+        Dw2_norm_2 = self.norm_h_2_to_2(dw2, h, N)
 
-        else:
-            energy = np.zeros(self.Nt)
-            for n in range(self.Nt):
-                wn = self.w[n]
-                e = self.h * np.sum(1/2 * norm(np.gradient(wn, self.h)) + 
-                               bground_sign*1/4 * (self.background-bground_sign*norm(wn))**2 - 
-                                k/4 * (np.gradient(norm(wn), self.h))**2)
-
-                energy[n] = e
-        
-            if plot:
-                plt.plot(self.t, energy-energy[0], ".")
-        
-                plt.xlabel(r"$t$")
-                plt.ylabel(r"$E(t)-E(0)$")
-                plt.tight_layout()
-        
-                if name is not None:
-                    plt.savefig(self.path+name, dpi=300, bbox_inches = "tight")
-                plt.show()
-        
-            return energy
+        e = 1/2 * Dw_norm_2 + bground_sign * 1/4 * (w_norm_4) - k/4 * Dw2_norm_2
+        return e
 
 
 class Time_CN(Defocusing_QGP):
@@ -312,10 +250,12 @@ class CNFD(Time_CN):
         
     def update(self, n, **kwargs):
         i=1j
-        method = "newton"
+        
+        method = kwargs.get("method")          
+        newton_abs = kwargs.get("newton_abs") 
 
-        if kwargs:
-            method = kwargs["method"]
+        if method is None:
+            method = "newton"
 
         if self.save_as_files is None:
             # Actual state
@@ -340,10 +280,10 @@ class CNFD(Time_CN):
             return output
         
         if method.lower()=="newton":
-            w_n_1, error, iteration = newton(wn_to_solve, F_, F_prime_, self.h)
+            w_n_1, error, iteration = newton(wn_to_solve, F_, F_prime_, self.h, tolX_abs=newton_abs)
             if self.print_iteration:
-                print("Iteration ",n+1, " of ", self.Nt, ". Newton Error: ", error, ". Total iteration: ", iteration)
-
+                print("Iteration ",n+1, " of ", self.Nt, ". Newton Error: ", error, 
+                      ". Total iteration: ", iteration)
             if error != error:
                 self.stop = True
                 pass
@@ -362,7 +302,7 @@ class CNFD(Time_CN):
             return w_n_1
 
 
-# DEPRECATED
+#################################### DEPRECATED ######################################################
 class Real_CNFD(Time_CN):
     
     def __init__(self, L, N, dt, tf, pars, border, ti=0):

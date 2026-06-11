@@ -17,95 +17,27 @@ class Focusing_QGP(NLS_numerical):
         self.l = self.dt/(self.h**2)
         self.order = order
 
-    def get_mass(self, plot=False, name=None):
-
-        if self.save_as_files is not None and self.save_properties:
-            if self.local:
-                wn_r = self.w[np.abs(self.x-self.x_0)<self.L_tilde]
-                m_r = self.h * np.sum(norm(wn_r))
-    
-                self.to_save_mass_R[self.save_iter] = m_r
-
-                wn_l = self.w[np.abs(self.x+self.x_0)<self.L_tilde]
-                m_l = self.h * np.sum(norm(wn_l))
-    
-                self.to_save_mass_L[self.save_iter] = m_l
-
-            wn = self.w
-            m = self.h * np.sum(norm(wn))
-    
-            self.to_save_mass[self.save_iter] = m
-
-        else:
-            mass = np.zeros(self.Nt)
-            for n in range(self.Nt):
-                m = self.h * np.sum(norm(self.w[n]))
-                mass[n] = m
-                
-            if plot:
-                plt.plot(self.t, mass-mass[0], ".")
-    
-                plt.xlabel(r"$t$")
-                plt.ylabel(r"$N(t)-N(0)$")
-                plt.tight_layout()
-    
-                if name is not None:
-                    plt.savefig(self.path+name, dpi=300, bbox_inches = "tight")
-                plt.show()
-    
-            return mass
+    def mass(self, w, h, N):
+        m = self.norm_h_2_plus_2(w, h, N)
+        return m
 
 
-    def get_energy(self, plot=False, name=None):
-        k = self.pars["k"]
+    def energy(self, w, h, k, N):
+        w0 = w[0]
+        wJ = w[-1]
 
-        if self.save_as_files is not None and self.save_properties:
-            if self.local:
-                wn_r = self.w[np.abs(self.x-self.x_0)<self.L_tilde]
+        D1 = self.build_D1(N, h)
 
-                e_r = self.h * np.sum(1/2 * norm(np.gradient(wn_r, self.h)) - 
-                                1/4 * norm(wn_r)**2 + 
-                                k/4 * (np.gradient(norm(wn_r), self.h))**2)
+        dw = D1 @ w
+        dw2 = D1 @ norm(w)
 
-                wn_l = self.w[np.abs(self.x+self.x_0)<self.L_tilde]
+        Dw_norm_2 = self.norm_h_2_to_2(dw, h, N)
+        w_norm_4 = self.norm_h_4_to_4(w, h, N)
+        Dw2_norm_2 = self.norm_h_2_to_2(dw2, h, N)
 
-                e_l = self.h * np.sum(1/2 * norm(np.gradient(wn_l, self.h)) - 
-                                1/4 * norm(wn_l)**2 + 
-                                k/4 * (np.gradient(norm(wn_l), self.h))**2)
+        e = 1/2 * Dw_norm_2 - 1/4 * w_norm_4 + k/4 * Dw2_norm_2
+        return e
 
-                self.to_save_energy_R[self.save_iter] = e_r
-                self.to_save_energy_L[self.save_iter] = e_l
-
-            wn = self.w
-
-            e = self.h * np.sum(1/2 * norm(np.gradient(wn, self.h)) - 
-                                    1/4 * norm(wn)**2 + 
-                                    k/4 * (np.gradient(norm(wn), self.h))**2)
-
-            self.to_save_energy[self.save_iter] = e
-
-        else:
-            energy = np.zeros(self.Nt)
-            for n in range(self.Nt):
-                wn = self.w[n]
-                e = self.h * np.sum(1/2 * norm(np.gradient(wn, self.h)) - 
-                                1/4 * norm(wn)**2 + 
-                                k/4 * (np.gradient(norm(wn), self.h))**2)
-                energy[n] = e
-        
-            if plot:
-                energy = np.trim_zeros(energy)
-                plt.plot(self.t, energy-energy[0], ".")
-        
-                plt.xlabel(r"$t$")
-                plt.ylabel(r"$E(t)-E(0)$")
-                plt.tight_layout()
-        
-                if name is not None:
-                    plt.savefig(self.path+name, dpi=300, bbox_inches = "tight")
-                plt.show()
-        
-            return energy
 
 class Time_CN(Focusing_QGP):
 
