@@ -1,0 +1,22 @@
+{
+  "base_dir": "/Users/sebastian/Desktop/Phd/Nonlinear-Schrodinger/Heaven_scripts/Results/Blow_up/As/blow_up_N_160000_Nt_64221_sigma_0.1_second/blow_up_A_0.638/restart_runs",
+  "path_save": "/Users/sebastian/Desktop/Phd/Nonlinear-Schrodinger/Tests and Results/QGP/Blow_up/Img/Local/restart_runs_comparison_A_0.638",
+  "params": {
+    "A": 0.638,
+    "sigma": 0.1
+  },
+  "selected_mode": "target",
+  "resolutions": {
+    "refined10": {
+      "folder": "/Users/sebastian/Desktop/Phd/Nonlinear-Schrodinger/Heaven_scripts/Results/Blow_up/As/blow_up_N_160000_Nt_64221_sigma_0.1_second/blow_up_A_0.638/restart_runs/restart_A_0.638_from_0000055212_to_last_below_0000056610_minus_1000dt_no_refine_Nt_1409_N_160000",
+      "selected_idx": 0,
+      "selected_time": null,
+      "paths": {
+        "u": null,
+        "ux": null,
+        "uxx": null,
+        "x": null
+      }
+    }
+  }
+}
