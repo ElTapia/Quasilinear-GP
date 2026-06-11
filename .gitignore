@@ -428,3 +428,4 @@ FodyWeavers.xsd
 /NLS_Quin
 Terminal_commands.txt
 exclude.txt
+*.gz
