@@ -25,6 +25,8 @@ nohup python3 filename.py & : launch the job in background
 
 nohup python3 -u filename.py $> nohup_name.out $ & : Save progress in nohup_name.out
 
+nohup python3 -u filename.py > nohup_name.out 2>&1 &
+
  ps -o etime= -p "PID" -> Time
 
  --enable-64
@@ -33,7 +35,7 @@ nohup python3 -u filename.py $> nohup_name.out $ & : Save progress in nohup_name
 jobs : check what's running
 cat nohup.out : see printings or errors in nohup
 tail nohup.out : see last printings # last 10 lines (print)
-top : See machine state
+top : See machine statet
 kill + PID number (from "top") # PID in jobs
 
 
@@ -51,3 +53,15 @@ rsync -vrthP dir1/ dir2: Combination of flags. v, t, h and P are to visualize
 
 rsync -vrthP localpath stapiama@heaven.lille.inria.fr:heavenpath : Local to Heaven
 rsync -vrthP stapiama@heaven.lille.inria.fr:heavenpath localpath : Heaven to Local
+
+
+
+
+# Activar environment en olympus
+source "$HOME/qnls/bin/activate"
+
+
+# Look every python file running
+ps -ef | grep python
+
+

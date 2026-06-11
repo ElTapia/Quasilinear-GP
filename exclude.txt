@@ -3,6 +3,7 @@ README.md
 NLS_Quin
 Tests and Results
 Heaven_scripts/Results
+Heaven_scripts/nohups
 __pycache__
 exclude.txt
 Terminal_commands.txt
@@ -11,3 +12,5 @@ Terminal_commands.txt
 .gitignore
 .ipynb_checkpoints/*
 .ipynb_checkpoints/
+test/
+Heaven_scripts/DS_unstable/three_eps/uns_k_-50_ev_test_N_400001_Nt_100000_L_400/*
