@@ -429,3 +429,4 @@ FodyWeavers.xsd
 Terminal_commands.txt
 exclude.txt
 *.gz
+*.out
