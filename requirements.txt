@@ -1,0 +1,8 @@
+numpy>=2.0
+scipy>=1.13
+matplotlib>=3.9
+SciencePlots>=2.1
+matplotlib-label-lines>=0.7
+pandas>=2.2
+jupyterlab>=4.0
+ipykernel>=6.29

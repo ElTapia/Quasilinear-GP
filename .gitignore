@@ -1,0 +1,70 @@
+# ---------------------------------------------------------------
+# Only source code is versioned (src/, scripts/*.py, notebooks/*.ipynb
+# without outputs, documentation). Results, data, figures, logs and
+# personal files stay local.
+# ---------------------------------------------------------------
+
+# --- Local-only project folders and notes ---
+/Papers/
+/NLS_Quin/
+# local symlink -> scripts/
+/Heaven_scripts
+/REORG_PLAN.md
+/Terminal_commands.txt
+/exclude.txt
+*.code-workspace
+
+# --- Results of background runs ---
+/scripts/Results/
+/scripts/nohups/
+nohup*
+*.out
+
+# --- Data and saved simulation states ---
+*.npy
+*.npz
+*.gz
+*.pck
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.mat
+*.csv
+*.json
+*.zip
+*.tar
+
+# --- Figures, animations and generated tables ---
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.pgf
+*.gif
+*.mp4
+*.txt
+# ...except the documentation files
+!README.txt
+!requirements.txt
+
+# --- Python / Jupyter ---
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+.ipynb_checkpoints*/
+
+# --- Virtual environments ---
+venv/
+.venv/
+venvs/
+env/
+QNLS/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+*~
